@@ -53,7 +53,7 @@ def splash():
   Syscall Shellcode for WoW64, 32-bit    |_|    
 
 """+res
-	author=yel+"                   v.1:  Bramwell Brizendine, 2022"+res
+	author=yel+"                   v.101:  Bramwell Brizendine, 2022"+res
 	print (splash)
 	print (splash2)
 	print (author)

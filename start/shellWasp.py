@@ -41,6 +41,7 @@ class shellcode():
 
 class configOpt():
 	def __init__(self):
+		self.r22H2=False
 		self.r21H2 =False
 		self.r21H1 =False
 		self.r20H2 =False
@@ -54,18 +55,21 @@ class configOpt():
 		self.r1607 =False
 		self.r1511 =False
 		self.r1507 =False
+		self.b21H2 = False
+		self.b22H2 = False
+
 	
 class winReleases():		
 	def __init__(self):
 		# self.win10ReverseLookup={"19044":"21H2", "19043":"21H1", "19042":"20H2", "19041":"2004", "18363":"1909", "18362":"1903", "17763":"1809", "17134":"1803", "16299":"1709", "15063":"1703", "14393":"1607", "10586":"1511", "10240":"1507"}
 		self.win10ReverseLookup={"19044":"21H2, Win10", "19043":"21H1, Win10", "19042":"20H2, Win10", "19041":"2004, Win10", "18363":"1909, Win10", "18362":"1903, Win10", "17763":"1809, Win10", "17134":"1803, Win10", "16299":"1709, Win10", "15063":"1703, Win10", "14393":"1607, Win10", "10586":"1511, Win10", "10240":"1507"}
-		self.win10ReverseLookupHex={"4A64": "21H2", "4A63": "21H1", "4A62": "20H2", "4A61": "2004", "47BB": "1909", "47BA": "1903", "4563": "1809", "42EE": "1803", "3FAB": "1709", "3AD7": "1703", "3839": "1607", "295A": "1511", "2800": "1507"}
+		self.win10ReverseLookupHex={"4A64": "21H2", "4A65": "22H2", "4A63": "21H1", "4A62": "20H2", "4A61": "2004", "47BB": "1909", "47BA": "1903", "4563": "1809", "42EE": "1803", "3FAB": "1709", "3AD7": "1703", "3839": "1607", "295A": "1511", "2800": "1507"}
 		# Win11 21H2 build 22000 55F0
-		self.win11ReverseLookupHex={"55F0":"21H2"}
-		self.win11ReverseLookup={"22000":"21H2, Win11"}
-		self.winOSReverseLookupHex={"4A64": "Windows 10", "4A63": "Windows 10", "4A62": "Windows 10", "4A61": "Windows 10", "47BB": "Windows 10", "47BA": "Windows 10", "4563": "Windows 10", "42EE": "Windows 10", "3FAB": "Windows 10", "3AD7": "Windows 10", "3839": "Windows 10", "295A": "Windows 10", "2800": "Windows 10", "55F0":"Windows 11", "1DB0":"Windows 7", "1DB1":"Windows 7", "4F7C":"Windows Server 2022"}
-		self.winOSReverseLookup={"4A64":"Windows 10", "21H1":"Windows 10", "20H2":"Windows 10", "2004":"Windows 10", "1909":"Windows 10", "1903":"Windows 10", "1809":"Windows 10", "1803":"Windows 10", "1709":"Windows 10", "1703":"Windows 10", "1607":"Windows 10", "1511":"Windows 10", "1507":"Windows 10","1DB0":"Windows 7", "1DB1":"Windows 7", "4F7C":"Windows Server 2022","55F0":"Windows 11"}
-		self.win10ReverseLookupBackup={"4A64":"21H2", "21H1":"21H1", "20H2":"20H2", "2004":"2004", "1909":"1909", "1903":"1903", "1809":"1809", "1803":"1803", "1709":"1709", "1703":"1703", "1607":"1607", "1511":"1511", "1507":"1507"}
+		self.win11ReverseLookupHex={"55F0":"21H2", "585D":"22H2"}
+		self.win11ReverseLookup={"22000":"21H2, Win11", "22621":"22H2, Win11"}
+		self.winOSReverseLookupHex={"4A64": "Windows 10","4A65": "Windows 10", "4A63": "Windows 10", "4A62": "Windows 10", "4A61": "Windows 10", "47BB": "Windows 10", "47BA": "Windows 10", "4563": "Windows 10", "42EE": "Windows 10", "3FAB": "Windows 10", "3AD7": "Windows 10", "3839": "Windows 10", "295A": "Windows 10", "2800": "Windows 10", "55F0":"Windows 11","585D":"Windows 11", "1DB0":"Windows 7", "1DB1":"Windows 7", "4F7C":"Windows Server 2022"}
+		self.winOSReverseLookup={"4A64":"Windows 10", "4A65": "Windows 10", "21H1":"Windows 10", "20H2":"Windows 10", "2004":"Windows 10", "1909":"Windows 10", "1903":"Windows 10", "1809":"Windows 10", "1803":"Windows 10", "1709":"Windows 10", "1703":"Windows 10", "1607":"Windows 10", "1511":"Windows 10", "1507":"Windows 10","1DB0":"Windows 7", "1DB1":"Windows 7", "4F7C":"Windows Server 2022","55F0":"Windows 11", "585D":"Windows 11"}
+		self.win10ReverseLookupBackup={"4A64":"21H2", "4A65":"22H2","21H1":"21H1", "20H2":"20H2", "2004":"2004", "1909":"1909", "1903":"1903", "1809":"1809", "1803":"1803", "1709":"1709", "1703":"1703", "1607":"1607", "1511":"1511", "1507":"1507"}
 
 		# Windows Server 2022 build 20348 4F7C
 		# Windows 7 Sp0 7600 1DB0
@@ -73,11 +77,11 @@ class winReleases():
 		self.win7ReverseLookupHex={"1DB0":"SP0", "1DB1":"SP1"}
 		self.win7ReverseLookup={"7600":"Win7, Sp0", "7601":"Win7, Sp1"}
 		self.winServer22ReverseLookupHex={"4F7C":"20348, Windows Server 2022"}
-		self.winOSBoolSelected={"4A64": False, "4A63": False, "4A62": False, "4A61": False, "47BB": False, "47BA": False, "4563": False, "42EE": False, "3FAB": False, "3AD7": False, "3839": False, "295A": False, "2800": False, "55F0":False, "1DB0":False, "1DB1":False, "4F7C":False}
-		self.releaseOptions={"r13":"4A64", "r12":"21H1", "r11":"20H2", "r10":"2004", "r9":"1909", "r8":"1903", "r7":"1809", "r6":"1803", "r5":"1709", "r4":"1703", "r3":"1607", "r2":"1511", "r1":"1507", "sp1":"1DB1", "sp0":"1DB0", "b1":"55F0"}
-		self.osChoiceToHex={"4A64":"4A64", "21H1":"4A63", "20H2":"4A62", "2004":"4A61", "1909":"47BB", "1903":"47BA", "1809":"4563", "1803":"42EE", "1709":"3FAB", "1703":"3AD7", "1607":"3839", "1511":"295A", "1507":"2800", "1DB1":"1DB1", "1DB0":"1DB0", "55F0":"55F0"}
+		self.winOSBoolSelected={"4A64": False, "4A65": False, "4A63": False, "4A62": False, "4A61": False, "47BB": False, "47BA": False, "4563": False, "42EE": False, "3FAB": False, "3AD7": False, "3839": False, "295A": False, "2800": False, "55F0":False,  "585D":False,"1DB0":False, "1DB1":False, "4F7C":False}
+		self.releaseOptions={"r14":"4A65","r13":"4A64", "r12":"21H1", "r11":"20H2", "r10":"2004", "r9":"1909", "r8":"1903", "r7":"1809", "r6":"1803", "r5":"1709", "r4":"1703", "r3":"1607", "r2":"1511", "r1":"1507", "sp1":"1DB1", "sp0":"1DB0", "b1":"55F0", "b2":"585D"}
+		self.osChoiceToHex={"4A64":"4A64","4A65":"4A65", "21H1":"4A63", "20H2":"4A62", "2004":"4A61", "1909":"47BB", "1903":"47BA", "1809":"4563", "1803":"42EE", "1709":"3FAB", "1703":"3AD7", "1607":"3839", "1511":"295A", "1507":"2800", "1DB1":"1DB1", "1DB0":"1DB0", "55F0":"55F0", "585D":"585D"}
 		self.listWin7Vals=["1DB0", "1DB1"]
-		self.listWin1011Vals=["4A64","21H1","20H2","2004","1909","1903","1809","1803","1709","1703","1607","1511","1507","55F0"]
+		self.listWin1011Vals=["4A64", "4A65","21H1","20H2","2004","1909","1903","1809","1803","1709","1703","1607","1511","1507","55F0", "585D"]
 
 
 class winSyscalls():
@@ -101,6 +105,7 @@ conFile = str("config.cfg")
 
 def checkWinOSBools():
 	builds.winOSBoolSelected["4A64"]=False
+	builds.winOSBoolSelected["4A65"]=False
 	builds.winOSBoolSelected["21H1"]=False
 	builds.winOSBoolSelected["20H2"]=False
 	builds.winOSBoolSelected["2004"]=False
@@ -116,6 +121,8 @@ def checkWinOSBools():
 	builds.winOSBoolSelected["1DB0"]=False
 	builds.winOSBoolSelected["1DB1"]=False
 	builds.winOSBoolSelected["55F0"]=False
+	builds.winOSBoolSelected["58FD"]=False
+
 
 	for myOs in sh.osChoices2:
 		builds.winOSBoolSelected[myOs]=True
@@ -123,7 +130,9 @@ def checkWinOSBools():
 def readConf():
 	con = Configuration(conFile)
 	conr = con.readConf()
-	r21H2= conr.getboolean('Windows 10','r21h2')
+	r22H2= conr.getboolean('Windows 10','r22H2')
+	builds.winOSBoolSelected["4A65"]=r22H2
+	r21H2= conr.getboolean('Windows 10','r21H2')
 	builds.winOSBoolSelected["4A64"]=r21H2
 	r21H1= conr.getboolean('Windows 10','r21h1')
 	builds.winOSBoolSelected["21H1"]=r21H1
@@ -156,12 +165,18 @@ def readConf():
 	Win7SP1=conr.getboolean('Windows 7','SP1')
 	builds.winOSBoolSelected["1DB1"]=Win7SP1
 	
+
 	Win11_21H2=conr.getboolean('Windows 11','b21H2')
 	builds.winOSBoolSelected["55F0"]=Win11_21H2
+
+	Win11_22H2=conr.getboolean('Windows 11','b22H2')
+	builds.winOSBoolSelected["585D"]=Win11_22H2
 
 	sh.printStringLiteral=conr.getboolean('MISC','print_string_literal_of_bytes')
 	sh.show_comments=conr.getboolean('MISC','show_comments')
 	# print (red+str(sh.show_comments)+res, "sh.show_comments")
+	if r22H2:
+		sh.osChoices2.append("4A65")
 	if r21H2:
 		sh.osChoices2.append("4A64")
 	if r21H1:
@@ -194,6 +209,8 @@ def readConf():
 		sh.osChoices2.append("1DB1")
 	if Win11_21H2:
 		sh.osChoices2.append("55F0")
+	if Win11_22H2:
+		sh.osChoices2.append("585D")
 
 
 	# print ("sh.osChoices2!!!")
@@ -213,6 +230,15 @@ def readConf():
 
 
 	# print ("listofSyscalls", sh.list_of_syscalls)
+def sanitizeSyscallsAdded(tempSys2):
+	addedSyscalls=[]
+	for term  in tempSys2:
+		if term.lower() in syscallLowerLookupDict:
+			term=syscallLowerLookupDict[term.lower()]
+			addedSyscalls.append(term)
+	return addedSyscalls
+			
+
 def sanitizeSyscalls():
 	t=0
 	for term in sh.list_of_syscalls:
@@ -220,7 +246,7 @@ def sanitizeSyscalls():
 			term=syscallLowerLookupDict[term.lower()]
 			sh.list_of_syscalls[t]=term
 		else:
-			print (red+"The " +term +" syscall is not present. Check spelling. Item removed."+res)
+			print (red+"The " +yel + term +red + " syscall is not present. Check spelling. Item removed."+res)
 			del sh.list_of_syscalls[t]
 		t+=1
 def saveConf(con):
@@ -275,6 +301,7 @@ def modConf():
 
 	checkWinOSBools()
 	r21H2 = builds.winOSBoolSelected["4A64"]
+	r22H2 = builds.winOSBoolSelected["4A65"]
 	r21H1 = builds.winOSBoolSelected["21H1"]
 	r20H2 = builds.winOSBoolSelected["20H2"]
 	r2004 = builds.winOSBoolSelected["2004"]
@@ -290,10 +317,12 @@ def modConf():
 	sp0 = builds.winOSBoolSelected["1DB0"]
 	sp1 = builds.winOSBoolSelected["1DB1"]
 	b21H2 = builds.winOSBoolSelected["55F0"]
+	b22H2 = builds.winOSBoolSelected["58FD"]
+
 	
 
-	listofStrings=["r21h2",	"r21h1",	"r20h2",	"r2004",	"r1909",	"r1903",	"r1809",	"r1803",	"r1709",	"r1703",	"r1607",	"r1511","r1507","sp0","sp1", "b21h2"]
-	listofBools=[r21H2, r21H1, r20H2, r2004, r1909, r1903, r1809, r1803, r1709, r1703, r1607, r1511, r1507,sp0,sp1,b21H2] 
+	listofStrings=["r21H2",	"r22H2", "r21h1",	"r20h2",	"r2004",	"r1909",	"r1903",	"r1809",	"r1803",	"r1709",	"r1703",	"r1607",	"r1511","r1507","sp0","sp1", "b21H2", "b22H2"]
+	listofBools=[r21H2,r22H2, r21H1, r20H2, r2004, r1909, r1903, r1809, r1803, r1709, r1703, r1607, r1511, r1507,sp0,sp1,b21H2, b22H2] 
 
 	listofStrings.append("selected_syscalls")
 	listofBools.append(sh.list_of_syscalls)
@@ -573,8 +602,10 @@ nop
 			generateSyscallParams+="mov eax, [edi+"+hex(z*4)+"]\t"+syscallComment+"\ncall ourSyscall\n\n"
 		# z+=1
 
-		stackCleanupRestore="add esp, " + hex(numSyscallParams*4) + "\n"
-		stackCleanupRestore+="pop edi\n\n"
+		stackCleanupRestore="mov edi, [esp+" + hex(numSyscallParams*4) + "]\n\n"
+		# stackCleanupRestore="add esp, " + hex(numSyscallParams*4) + "\n"  // DEPRECATED
+		# stackCleanupRestore+="pop edi\n\n"  // DEPRECATED
+		#### mov edi, [esp+0x] provides greater stability for a shellcode with a longer sequence of syscalls. 
 		generateSyscallParams +=stackCleanupRestore
 
 	# print (win10ReverseLookup["15063"])
@@ -651,19 +682,19 @@ SYSCALL_BOOL_DICT = {
 def uiAddWinReleases():
 	# self.win10ReverseLookup={"19044":"21H2, Win10", "19043":"21H1, Win10", "19042":"20H2, Win10", "19041":"2004, Win10", "18363":"1909, Win10", "18362":"1903, Win10", "17763":"1809, Win10", "17134":"1803, Win10", "16299":"1709, Win10", "15063":"1703, Win10", "14393":"1607, Win10", "10586":"1511, Win10", "10240":"1507"}
 	checkWinOSBools()
-	print (cya+"\nWindows 10:\t\t\t\tWindows 7"+res)
-	listWin10=["21H2", "21H1", "20H2", "2004", "1909", "1903", "1809", "1803", "1709", "1703", "1607", "1511", "1507"]
-	listWin10Back=["4A64", "21H1", "20H2", "2004", "1909", "1903", "1809", "1803", "1709", "1703", "1607", "1511", "1507"]
+	print (cya+"\nWindows 10:\t\t\t\tWindows 7:"+res)
+	listWin10=["22H2", "21H2", "21H1", "20H2", "2004", "1909", "1903", "1809", "1803", "1709", "1703", "1607", "1511", "1507"]
+	listWin10Back=["4A65", "4A64", "21H1", "20H2", "2004", "1909", "1903", "1809", "1803", "1709", "1703", "1607", "1511", "1507"]
 
-	listWin11=["21H2"]
-	listWin11Back=["55F0"]
+	listWin11=["22H2","21H2"]
+	listWin11Back=["585D", "55F0"]
 
 	listWin7=["SP1", "SP0"]
 	listWin7Back=["1DB1","1DB0"]
 	
-	listWin10Codes=["r13", "r12", "r11", "r10", "r9", "r8", "r7", "r6", "r5", "r4", "r3", "r2", "r1"]
+	listWin10Codes=["r14", "r13", "r12", "r11", "r10", "r9", "r8", "r7", "r6", "r5", "r4", "r3", "r2", "r1"]
 	listWin7Codes=["sp1", "sp0"]
-	listWin11Codes=["b1"]
+	listWin11Codes=["b2", "b1"]
 	text=""
 	t=0
 	stop=0
@@ -693,11 +724,11 @@ def uiAddWinReleases():
 		else:
 			t1=" "
 		win10TogBool=res+"["+gre+t1+res+"]"
-		text += "\t{}\t{}\t{}\t\t{}\t\n".format(yel+listWin10Codes[t]+res, listWin10[t],win10TogBool, cya+"Windows 11"+res)
+		text += "\t{}\t{}\t{}\t\t{}\t\n".format(yel+listWin10Codes[t]+res, listWin10[t],win10TogBool, cya+"Windows 11:"+res)
 		t+=1
 	
 	w=0
-	for x in range(1):
+	for x in range(2):
 		winlookUp=listWin10Back[t]
 		if (builds.winOSBoolSelected[winlookUp]):
 			t1="X"
@@ -708,12 +739,13 @@ def uiAddWinReleases():
 			t2="X"
 		else:
 			t2=" "
+
 		win10TogBool=res+"["+gre+t1+res+"]"
 		win11TogBool=res+"["+gre+t2+res+"]"
 
-		text += "\t{}\t{}\t{}\t\t\t{}\t{}\t{}\n".format(yel+listWin10Codes[t]+res, listWin10[t],win10TogBool, yel+listWin11Codes[0]+res, listWin11[w],win11TogBool)
+		text += "\t{}\t{}\t{}\t\t\t{}\t{}\t{}\n".format(yel+listWin10Codes[t]+res, listWin10[t],win10TogBool, yel+listWin11Codes[w]+res, listWin11[w],win11TogBool)
 		t+=1	
-		w+=0
+		w+=1
 	for x in range(9):
 		winlookUp=listWin10Back[t]
 		if (builds.winOSBoolSelected[winlookUp]):
@@ -773,16 +805,24 @@ def uiAddSyscalls():
 		
 		# x = sys.stdin.read()
 		ans=[]
+		tempSys=[]
+		tempSys.clear()
 		for line in sys.stdin:
 
 			if 'q' == line.rstrip() or 'x' == line.rstrip():
 				break
 			ans.append(line.rstrip())
+			tempSys.append(line.rstrip())
+			# tempSys.add(line.rstrip())
 		# print(f'Input : {line}')
 		# print (ans)
 		sh.list_of_syscalls.extend(ans)
 		sanitizeSyscalls()
-		print (cya+"Syscalls add")
+		tempSys2=sanitizeSyscallsAdded(tempSys)
+
+		print (cya+"Syscalls added:")
+		for each in tempSys2:
+			print ("\t",each)
 		break
 # print("Exit")
 
