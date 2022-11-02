@@ -1,5 +1,5 @@
 # ShellWasp
-ShellWasp is a new tool to faciliate creating shellcode utilizing syscalls, released at DEF CON 30 on August 12, 2022. 
+ShellWasp is a new tool to faciliate creating shellcode utilizing syscalls, released at DEF CON 30 on August 12, 2022. It will also soon be a briefing at Black Hat Middle East and Africa this November, 2022! It is likely some more sample syscall shellcodes will be made released then or shortly thereafter.
 
 ShellWasp automates building templates of syscall shellcode. The template is intended to be just that - a template. The user still must determine what parameter values to use and how to generate them. The intent is to simplify the process for those desiging to create syscall shellcode by hand. Nearly all user-mode syscalls supported, including all the ones I could find function prototypes for. ShellWasp also solves the syscall portability problem for syscalls. It uses the 32-bit PEB to identify OS build. ShellWasp creates a syscall arrray, allowing the current syscall values (SSNs) to be found at runtime, rather than having to be hardcoded, which can limit how you can use them across OS builds. ShellWasp takes care of managing the syscall array, so if a syscall is used multiple times, there will only be one entry in the syscall array. Thus, ShellWasp will allows syscall values (SSNs) to be obtained dynamically.
 
@@ -21,6 +21,10 @@ ShellWasp only supports Windows 7/10/11 at the moment, as a desing choice. It is
 Download via GitHub and run it on the command line, e.g. `py shellWasp.py`
 
 Desired settings for selected OS builds/releases as well as Windows syscalls can be added to the config file. They also may be added or changed in the UI. 
+
+## Updates
+On Nov. 1, 2022, support was added for Windows 10 22H2 and Windows 11 22H2. 
+On Nov. 1, 2022, the mechanism by which the pointer to the syscall array is preserved has been changed. In testing shellcode with chains of several Windows syscalls, some stability issues were noted with values on the stack. In order to avoid those issues, it was decided to change the stack cleanup (`add esp, 0xXX`) and `pop edi`,  to `mov edi, [esp+0xYY]` - YY being the number of bytes that would have been "cleaned" from the stack. The `push edi` that follows is retained. ShellWasp maintains a pointer to the syscall array at edi, and since the actual syscall itself destroys the value contained in edi, there needs to be a way to restore it, after the return from the far jump to kernel-mode. It was felt this new Assembly would be a more stable way to accomplish this. Of course, another option could be to have a pointer to the syscall array stored at some location on ebp or other memory, and then that could be used to restore EDI. That would in some ways be simpler, as it would be possible to avoiding needing to count the number of bytes to go back. However, it as felt that `mov edi, [ebp+0xYY]` would be safer for novices. If it was stored elsewhere in memory at a fixed location, such as the stack, it could be possible to accidentally overwrite it. Both approaches take minimal time and effort. 
 
 ## Installation
 A setup file is provided to help ensure the correct libraries are installed. 
