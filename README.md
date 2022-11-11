@@ -18,6 +18,7 @@ ShellWasp only supports Windows 7/10/11 at the moment, as a desing choice. It is
 ![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/shellwasp3.png?raw=true)
 
 ![image](https://user-images.githubusercontent.com/49998815/201258739-bc8e4f11-d737-4a1f-a8e5-7f827f701717.png)
+Note: You select the OS builds to target--it is not necessary to target every single build--and you select the syscalls to use. The above is just a random illustration. ShellWasp takes care of a lot of the details, but you still need to build out the parameters and required structures.
 
 ## Usage
 Download via GitHub and run it on the command line, e.g. `py shellWasp.py`
