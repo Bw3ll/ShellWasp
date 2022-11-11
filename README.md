@@ -15,7 +15,9 @@ ShellWasp only supports Windows 7/10/11 at the moment, as a desing choice. It is
 
 ![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/shellwasp1.png?raw=true)
 
-![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/shellwasp2.png?raw=true)
+![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/shellwasp3.png?raw=true)
+
+![image](https://user-images.githubusercontent.com/49998815/201258739-bc8e4f11-d737-4a1f-a8e5-7f827f701717.png)
 
 ## Usage
 Download via GitHub and run it on the command line, e.g. `py shellWasp.py`
