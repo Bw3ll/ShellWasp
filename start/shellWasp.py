@@ -88,7 +88,7 @@ class winSyscalls():
 	def __init__(self):
 		with open(os.path.join(os.path.dirname(__file__), 'WinSysCalls.json'), 'r') as syscall_file:
 			self.syscall_dict = json.load(syscall_file)
-		with open(os.path.join(os.path.dirname(__file__), 'reverseWinsysCallsInt.json'), 'r') as syscall_file:
+		with open(os.path.join(os.path.dirname(__file__), 'reverseWinSyscallsInt.json'), 'r') as syscall_file:
 			self.reverseSyscall_dict = json.load(syscall_file)
 
 class shellBytes:
