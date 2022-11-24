@@ -3,7 +3,10 @@
 // This uses the ShellWasp technique for syscall shellcode
 // ShellWasp - for Syscall Shellcode: https://github.com/Bw3ll/ShellWasp
 
-// This inline Assembly can allow the syscall shellcode to be tested (and edited) simply. I will release it in shellcode form at a little time--I have some additional minor cleanup to do. The pure shellcode (non-inline Assembly) one I have has some minor stability issues before I can release it. Description on compiling and using with Developer prompt discussed later.
+// This inline Assembly can allow the syscall shellcode to be tested (and edited) simply. 
+// I will release it in shellcode form at a little time--I have some additional minor cleanup to do. 
+// The pure shellcode (non-inline Assembly) one I have has some minor stability issues before I can release it. 
+// Description on compiling and using with Developer prompt discussed later.
 
 #include <windows.h>
 #include <iostream>
