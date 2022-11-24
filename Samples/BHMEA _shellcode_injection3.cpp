@@ -238,7 +238,7 @@ mov dx, 0x44
 push dx
 
 
-// xor edx, edx   ; test.exe   ; if test.exe, must change sizes in Punicode struct
+// xor edx, edx   ; test.exe   ; if test.exe, must change sizes in repe cmpsb string comparison
 // push edx
 // mov dx, 0x65 
 // push dx
