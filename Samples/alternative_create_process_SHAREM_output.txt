@@ -1,0 +1,88 @@
+Output from SHAREM: https://github.com/Bw3ll/sharem
+
+
+        [*] Emulating x86 shellcode
+        [*] CPU counter: 358
+        [*] Emulation complete
+
+************* APIs *************
+
+
+************* Syscalls *************
+
+0x1200034b NtCreateKey(PHANDLE KeyHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, ULO
+G TitleIndex, PUNICODE_STRING Class, ULONG CreateOptions, PUNLONG Disposition)
+        PHANDLE KeyHandle: 0x16fffae8 -> HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
+        ACCESS_MASK DesiredAccess: 0xf013f
+        POBJECT_ATTRIBUTES ObjectAttributes:
+                ULONG Length: 0x18
+                HANDLE RootDirectory: 0x0
+                PUNICODE_STRING ObjectName: \Registry\Machine\Software\Microsoft\Windows\CurrentVersion\Run
+                ULONG Attributes: OBJ_CASE_INSENSITIVE
+                PVOID SecurityDescriptor: 0x0 -> 0x0
+                PVOID SecurityQualityOfService: 0x0 -> 0x0
+        ULONG TitleIndex: 0x0
+        PUNICODE_STRING Class: 0x0
+        ULONG CreateOptions: 0x0
+        PUNLONG Disposition: 0x0
+        Return: NTSTATUS STATUS_SUCCESS
+        EAX:  0x1d - (Windows 10, SP 21H1)
+
+0x1200034b NtSetValueKey(HANDLE KeyHandle, PUNICODE_STRING ValueName, ULONG TitleIndex, ULONG Type, PVOID Dat
+, ULONG DataSize)
+        HANDLE KeyHandle: HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
+        PUNICODE_STRING ValueName: 385874700
+        ULONG TitleIndex: 0x0
+        ULONG Type: 0x1
+        PVOID Data: C:\Windows\System32\calc.exe
+        ULONG DataSize: 0x38
+        Return: NTSTATUS STATUS_SUCCESS
+        EAX:  0x60 - (Windows 10, SP 21H1)
+
+0x1200034b NtClose(HANDLE Handle)
+        HANDLE Handle: HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
+        Return: NTSTATUS STATUS_SUCCESS
+        EAX:  0x3000f - (Windows 10, SP 21H1)
+
+0x1200034b NtTerminateProcess(HANDLE ProcessHandle, NTSTATUS ExitStatus)
+        HANDLE ProcessHandle: 0x0
+        NTSTATUS ExitStatus: STATUS_SUCCESS
+        Return: NTSTATUS STATUS_SUCCESS
+        EAX:  0x7002c - (Windows 10, SP 21H1)
+
+
+************* DLLs *************
+DLLs                   None
+
+************* Artifacts *************
+*** Paths ***
+** Misc **
+C:\Windows\System32\calc.exe
+\\Registry\\Machine\\Software\\Microsoft\\Windows\\CurrentVersion\\Run
+
+*** Files ***
+** Misc **
+calc.exe
+
+*** EXE / DLLs ***
+C:\Windows\System32\calc.exe
+
+*** Registry Actions ***
+** Add **
+HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
+
+** Edit **
+HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
+Syscall Created Key
+C:\Windows\System32\calc.exe
+
+*** Registry Techniques ***
+** Persistence **
+HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
+
+*** Registry Hierarchy ***
+** HKEY_Local_Machine **
+HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
+
+*** Registry Miscellaneous ***
+Software\\Microsoft\\Windows\\CurrentVersion\\Run
