@@ -50,5 +50,3 @@ This project is released under the terms of the MIT license.
 
 ## Note
 Please note that this GitHub is currently incomplete, and it will be updated with more information at a later date, including install instructions.
-
-Some UI design aesthetics inspired by Tarek Abdelmotaleb.
