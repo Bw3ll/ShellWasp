@@ -1,5 +1,5 @@
 # ShellWasp
-<b>Massive changes and enhancements coming soon.<b> ShellWasp 2.0 will have some significant enhancements that will be of great interest.
+<b>Massive changes and enhancements coming soon.</b> ShellWasp 2.0 will have some significant enhancements that will be of great interest.
   
 <b>Update</b>: I have uploaded slides and white paper from Black Hat Middle East on 11/15/2022. On 11/24/22, I added a couple samples to the samples directory . One is some inline Assembly used in one of the demos, and another is an .ASM and tester file for an alternative way to do CreateProcess. I may add more irregularly.
 
