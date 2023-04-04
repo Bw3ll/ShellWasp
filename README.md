@@ -1,4 +1,6 @@
 # ShellWasp
+<b>Massive changes and enhancements coming soon.<b> ShellWasp 2.0 will have some significant enhancements that will be of great interest.
+  
 <b>Update</b>: I have uploaded slides and white paper from Black Hat Middle East on 11/15/2022. On 11/24/22, I added a couple samples to the samples directory . One is some inline Assembly used in one of the demos, and another is an .ASM and tester file for an alternative way to do CreateProcess. I may add more irregularly.
 
 ShellWasp is a new tool to faciliate creating shellcode utilizing syscalls, released at DEF CON 30 on August 12, 2022. It will also soon be a briefing at Black Hat Middle East and Africa this November, 2022! It is likely some more sample syscall shellcodes will be made released then or shortly thereafter.
