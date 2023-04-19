@@ -1,11 +1,11 @@
 # ShellWasp
 <b>Massive changes and enhancements coming soon.</b> ShellWasp 2.0 will have some significant enhancements that will be of great interest.
   
-<b>Update</b>: I have uploaded slides and white paper from Black Hat Middle East on 11/15/2022. On 11/24/22, I added a couple samples to the samples directory . One is some inline Assembly used in one of the demos, and another is an .ASM and tester file for an alternative way to do CreateProcess. I may add more irregularly.
 
-ShellWasp is a new tool to faciliate creating shellcode utilizing syscalls, released at DEF CON 30 on August 12, 2022. It will also soon be a briefing at Black Hat Middle East and Africa this November, 2022! It is likely some more sample syscall shellcodes will be made released then or shortly thereafter.
 
-ShellWasp automates building templates of syscall shellcode. The template is intended to be just that - a template. The user still must determine what parameter values to use and how to generate them. The intent is to simplify the process for those desiging to create syscall shellcode by hand. Nearly all user-mode syscalls supported, including all the ones I could find function prototypes for. ShellWasp also solves the syscall portability problem for syscalls. It uses the 32-bit PEB to identify OS build. ShellWasp creates a syscall arrray, allowing the current syscall values (SSNs) to be found at runtime, rather than having to be hardcoded, which can limit how you can use them across OS builds. ShellWasp takes care of managing the syscall array, so if a syscall is used multiple times, there will only be one entry in the syscall array. Thus, ShellWasp will allows syscall values (SSNs) to be obtained dynamically.
+ShellWasp is a new tool to faciliate creating shellcode utilizing syscalls, released at DEF CON 30 on August 12, 2022. It will also soon be a briefing at Black Hat Middle East and Africa this November, 2022! On April 19, 2023, ShellWasp 2.0 is released with massive updates, including alternative ways to get OSBuild (via User_Shared_Data, PEB via r12), and three new ways to invoke the syscall via WoW64 (one for Win7 and two for Win10/11).
+
+ShellWasp automates building templates of syscall shellcode. The template is intended to be just that - a template. The user still must determine what parameter values to use and how to generate them. The intent is to simplify the process for those desiging to create syscall shellcode by hand. Nearly all user-mode syscalls supported, including all the ones I could find function prototypes for. ShellWasp also solves the syscall portability problem for syscalls. It identifies the OS build, and ShellWasp creates a syscall arrray in response to user input, allowing the current syscall values (SSNs) to be found at runtime, rather than having to be hardcoded, which can limit how you can use them across OS builds. ShellWasp takes care of managing the syscall array, so if a syscall is used multiple times, there will only be one entry in the syscall array. Thus, ShellWasp will allows syscall values (SSNs) to be obtained dynamically.
 
 ShellWasp supports Windows 7/10/11. It uses both existing syscall tables, as well as newly created syscall tables for newer versions of Windows 10 & 11. These are created through an original process, parsing WinDbg results. To achieve a more compact shellcode size, ShellWasp utilizes precomputed syscall tables in JSON format. This allows us to keep the shellcode size minimal. 
 
@@ -23,6 +23,21 @@ ShellWasp only supports Windows 7/10/11 at the moment, as a desing choice. It is
 
 ![image](https://user-images.githubusercontent.com/49998815/201258739-bc8e4f11-d737-4a1f-a8e5-7f827f701717.png)
 Note: You select the OS builds to target--it is not necessary to target every single build--and you select the syscalls to use. The above is just a random illustration. ShellWasp takes care of a lot of the details, but you still need to build out the parameters and required structures.
+
+
+
+![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/osbuild3.png?raw=true)
+
+![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/fsyscall.png.png?raw=true)
+
+![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/osbuild2.png?raw=true)
+![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/multWays.png?raw=true)
+![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/alt_invoke.png?raw=true)
+![image](https://github.com/Bw3ll/ShellWasp/blob/main/images/altinvoke2.png?raw=true)
+
+
+
+
 
 ## Usage
 Download via GitHub and run it on the command line, e.g. `py shellWasp.py`
