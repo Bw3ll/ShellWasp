@@ -35,6 +35,8 @@ class Configuration(metaclass=Singleton):
         list_windows7 = self.config.items('Windows 7')
 
         list_Syscalls = self.config.items('SYSCALLS')
+        list_Misc = self.config.items('MISC')
+
 
         # sharem_search = self.config.items('SHAREM SEARCH')
         # sharem_syscalls = self.config.items('SHAREM SYSCALLS')
@@ -46,6 +48,7 @@ class Configuration(metaclass=Singleton):
             for x in list_windows10:
                 if(key in x):
                     self.config['Windows 10'][str(key)] = str(val)
+                    # print(self.config['Windows 10'][str(key)],str(val))
         
         for key, val in self.args.items():
             for x in list_windows7:
@@ -61,6 +64,11 @@ class Configuration(metaclass=Singleton):
             for x in list_Syscalls:
                 if(key in x):
                     self.config['SYSCALLS'][str(key)] = str(val)
+
+        for key, val in self.args.items():
+            for x in list_Misc:
+                if(key in x):
+                    self.config['MISC'][str(key)] = str(val)
            
             # print("Key: ", key, "Val: ", val)
             # print(vars(self.config))
@@ -80,4 +88,5 @@ class Configuration(metaclass=Singleton):
                 )
         with open(_path, "w") as configfile:
             self.config.write(configfile)
+            # print(configfile)
         # print("done")

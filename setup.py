@@ -11,7 +11,7 @@ REQUIREMENTS = [
 ]
 
 setup(
-    name='ShellWasp',
+    name='ShellWasp: 32-bit Syscall Shellcode Generator',
     author='Bramwell Brizendine',
     description='ShellWasp - Generating 32-bit, WoW64 shellcode with Windows Syscalls',
     version=VERSION,
