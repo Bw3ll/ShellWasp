@@ -6,11 +6,16 @@ from keystone import *
 from binascii import hexlify
 from .parseconf import *
 import colorama
+import copy
 import sys
 import ast
 import traceback
 import re
 import datetime
+from .syscallPossibleValues import syscallPossibleValues
+from .syscallAIHelper import *
+from .syscallAiPrompts import *
+
 colorama.init()
 
 
@@ -29,6 +34,11 @@ my_stdout = open( 1, "w", buffering = 400000 )
 
 sys.stdout = my_stdout
 sys.stdout=oldsysOut
+sampleVals=False
+showStruct = True
+# showStruct = False
+integrateAI=False
+aiFinalResult = None
 
 configOptions={}
 class shellcode():
@@ -447,7 +457,286 @@ def isWin1011():
 	else:
 		return False
 
+def buildAiPromptSectionForSyscall(mySyscall, syscall_signature, syscallHeaderSuffixes=None):
+	"""
+	Build one AI prompt section like:
+
+	this is for an ntdll user mode call [ntdll!NtWriteVirtualMemory]
+
+	push 0x00000000         ; PULONG NumberOfBytesWritten
+	...
+	"""
+
+	if syscallHeaderSuffixes is None:
+		syscallHeaderSuffixes = {}
+
+	sysPrototype = syscall_signature[mySyscall]
+	numSyscallParams = sysPrototype[0]
+	t = numSyscallParams - 1
+
+	extraText = syscallHeaderSuffixes.get(mySyscall, "")
+	header = f"this is for an ntdll user mode call [ntdll!{mySyscall}]"
+	if extraText:
+		header += f" {extraText}"
+
+	lines = [header, ""]
+
+	for each in range(numSyscallParams):
+		paramType = sysPrototype[1][t]
+		paramName = sysPrototype[2][t]
+
+		# Keep this simple and stable for the AI prompt.
+		line = f"push 0x00000000         ; {paramType} {paramName}"
+		lines.append(line)
+
+		t -= 1
+
+	lines.append("")
+	return "\n".join(lines)
+
+
+def chunkList(items, itemsPerChunk):
+	for i in range(0, len(items), itemsPerChunk):
+		yield items[i:i + itemsPerChunk]
+
+
+def buildApiBlocksFromSyscalls(syscallChoices, syscall_signature, funcsPerBlock=5, syscallHeaderSuffixes=None):
+	"""
+	Returns a list[str], where each element contains up to funcsPerBlock syscall sections.
+
+	Example:
+	api_blocks[0] = "this is for ... NtWriteVirtualMemory ...\n\nthis is for ... NtProtectVirtualMemory ..."
+	"""
+
+	if syscallHeaderSuffixes is None:
+		syscallHeaderSuffixes = {}
+
+	apiBlocks = []
+
+	for syscallChunk in chunkList(syscallChoices, funcsPerBlock):
+		sections = []
+
+		for mySyscall in syscallChunk:
+			sectionText = buildAiPromptSectionForSyscall(
+				mySyscall=mySyscall,
+				syscall_signature=syscall_signature,
+				syscallHeaderSuffixes=syscallHeaderSuffixes
+			)
+			sections.append(sectionText)
+
+		apiBlocks.append("\n".join(sections).strip() + "\n")
+
+	return apiBlocks
+
+def stripLeadingTextCaseInsensitive(text, prefix):
+	if not text or not prefix:
+		return text
+
+	if text.lower().startswith(prefix.lower()):
+		text = text[len(prefix):]
+
+	return text.lstrip(" :-\t")
+
+def buildAiStructureMap(aiFinalResult):
+	structureMap = {}
+	if not aiFinalResult:
+		return structureMap
+
+	# structures = aiFinalResult.get("structures", {})
+	# if not isinstance(structures, dict):
+	# 	return structureMap
+
+	for structId, structDef in aiFinalResult.get("structures", {}).items():
+		if isinstance(structDef, dict):
+			structureMap[structId] = structDef
+
+	return structureMap
+
+
+def initAiState(aiFinalResult):
+	if not aiFinalResult:
+		return {
+			"calls": [],
+			"callIndex": 0,
+			"structureMap": {}
+		}
+
+	return {
+		"calls": aiFinalResult.get("calls", []),
+		"callIndex": 0,
+		"structureMap": buildAiStructureMap(aiFinalResult)
+	}
+
+
+def getNextAiCallEntry(aiState):
+	callIndex = aiState["callIndex"]
+	callList = aiState["calls"]
+
+	if callIndex >= len(callList):
+		return None
+
+	callEntry = callList[callIndex]
+	aiState["callIndex"] += 1
+	return callEntry
+
+
+def getAiPushEntry(aiCallEntry, pushIndex):
+	pushList = aiCallEntry.get("pushes", [])
+
+	if pushIndex < len(pushList):
+		pushEntry = pushList[pushIndex]
+		pushValue = pushEntry.get("value", "0x00000000")
+		additionalComment = pushEntry.get("additionalComment", "")
+		structureRef = pushEntry.get("structureRef")
+	else:
+		pushValue = "0x00000000"
+		additionalComment = ""
+		structureRef = None
+
+	return pushValue, additionalComment, structureRef
+
+
+def buildStructLinesFromAi(structureRef, aiState, commentColumn=24, showFieldType=True):
+	if not structureRef:
+		return ""
+
+	structMap = aiState.get("structureMap", {})
+	if not isinstance(structMap, dict):
+		return ""
+
+	structDef = structMap.get(structureRef)
+	if not isinstance(structDef, dict):
+		return ""
+
+	fields = structDef.get("fields", [])
+	if not isinstance(fields, list) or not fields:
+		return ""
+
+	lines = []
+	semicolonPrefix = " " * (5 + commentColumn) + "; "
+	start0 = whi + "Struct:" + res
+	start = semicolonPrefix+start0
+	lines.append(start)
+
+	for field in fields:
+		fieldName = str(field.get("fieldName", "UNKNOWN"))
+		fieldType = str(field.get("fieldType", "UNKNOWN"))
+		fieldValue = str(field.get("fieldValue", "UNKNOWN"))
+		fieldComment = field.get("fieldComment")
+
+		if showFieldType:
+			line = (
+				semicolonPrefix
+				+ mag + fieldType + res
+				+ " "
+				+ blu + fieldName + res
+				+ " = "
+				+ yel + fieldValue + res
+			)
+		else:
+			line = semicolonPrefix + mag + fieldName + res + " = " + yel + fieldValue + res
+
+		if fieldComment:
+			line += " " + yel + "(" + str(fieldComment) + ")" + res
+
+		lines.append(line)
+
+	return "\n".join(lines) + "\n"
+
+def sanitizeAdditionalComment(paramType, paramName, additionalComment):
+	if additionalComment is None:
+		return ""
+
+	text = str(additionalComment).strip()
+	if not text:
+		return ""
+
+	typeNamePair = paramType + " " + paramName
+
+	# Case 1: full repetition like:
+	# "ACCESS_MASK DesiredAccess ..."
+	text = stripLeadingTextCaseInsensitive(text, typeNamePair)
+
+	# Case 2: repeated param name like:
+	# "DesiredAccess (THREAD_ALL_ACCESS)"
+	text = stripLeadingTextCaseInsensitive(text, paramName)
+
+	# Case 3: pointer boilerplate like:
+	# "Pointer to HANDLE ThreadHandle (dummy pointer)"
+	# "Pointer to OBJECT_ATTRIBUTES ObjectAttributes (NULL, defaulted)"
+	if paramType.upper().startswith("P") and len(paramType) > 1:
+		pointeeType = paramType[1:]
+
+		text = stripLeadingTextCaseInsensitive(text, "Pointer to " + pointeeType + " " + paramName)
+		text = stripLeadingTextCaseInsensitive(text, "Pointer to " + paramName)
+		text = stripLeadingTextCaseInsensitive(text, "Pointer to " + pointeeType)
+
+	# Case 4: sometimes comments repeat type only
+	text = stripLeadingTextCaseInsensitive(text, paramType)
+
+	# Clean up ugly leftovers
+	text = text.strip()
+	if text.startswith(","):
+		text = text[1:].lstrip()
+	if text.startswith("-"):
+		text = text[1:].lstrip()
+
+	return text
+
+def buildAlignedPushLine(pushValue, commentText, commentColumn=24):
+	line = "push " + pushValue
+
+	if commentText:
+		padding = max(1, commentColumn - len(pushValue))
+		line += (" " * padding) + "; " + commentText
+
+	return line
+
+
+def buildStructLines(structureRef, syscallEntry, commentColumn=24):
+	if not structureRef:
+		return ""
+
+	structMap = syscallEntry.get("structures", {})
+	if not isinstance(structMap, dict):
+		return ""
+
+	structDef = structMap.get(structureRef)
+	if not isinstance(structDef, dict):
+		return ""
+
+	fields = structDef.get("fields", [])
+	if not isinstance(fields, list) or not fields:
+		return ""
+
+	lines = []
+	semicolonPrefix = " " * (5 + commentColumn) + "; "
+
+	for field in fields:
+		fieldName = str(field.get("fieldName", "UNKNOWN"))
+		fieldValue = str(field.get("fieldValue", "UNKNOWN"))
+		fieldComment = field.get("fieldComment")
+
+		line = semicolonPrefix + mag + fieldName + res + " = " + yel + fieldValue + res
+
+		if fieldComment:
+			line += " " + yel + "(" + str(fieldComment) + ")" + res
+
+		lines.append(line)
+
+	return "\n".join(lines) + "\n"
+def buildSampleValsComment(paramType, paramName, additionalComment):
+	cleanedComment = sanitizeAdditionalComment(paramType, paramName, additionalComment)
+
+	baseComment = cya + paramType + res + " " + blu + paramName + res
+
+	if cleanedComment:
+		return baseComment + " " + yel + cleanedComment + res
+
+	return baseComment
+
 def buildSyscall(print_to_file=False):
+
 	# osChoices = ["4A62","3AD7", "47BA","1DB0", "55F0", "4A64"]
 
 	# syscallChoices=["NtAllocateVirtualMemory", "NtCreateKey", "NtReplaceKey","NtSetContextThread", "NtSetValueKey"]
@@ -1042,19 +1331,81 @@ nop
 	# z=0
 
 
+	# for mySyscall in syscallChoices:
+	# 	sysPrototype= (syscall_signature[mySyscall])
+	# 	numSyscallParams=sysPrototype[0]
+	# 	t=numSyscallParams-1
+	# 	generateSyscallParams+="push edi\n"
+	# 	for each in range(numSyscallParams):
+	# 		# temp="push 0x00000000 ; param " + str(t)
+	# 		commentSyscallParams=""
+	# 		if sh.show_comments:
+	# 			commentSyscallParams="; " + cya+ sysPrototype[1][t] + " " + yel+  sysPrototype[2][t] +res
+	# 		generateSyscallParams+="push 0x00000000 \t" +  commentSyscallParams +"\n"
+	# 		t-=1
+	# 	generateSyscallParams+="\n"
+
+
+	if integrateAI:
+		FUNCS_PER_BLOCK = 5
+		syscallHeaderSuffixes = {"NtProtectVirtualMemory": "with RWX"}
+
+		api_blocks = buildApiBlocksFromSyscalls(syscallChoices=syscallChoices, syscall_signature=syscall_signature, funcsPerBlock=FUNCS_PER_BLOCK,syscallHeaderSuffixes=syscallHeaderSuffixes)
+		aiFinalResult = buildPossibleValues(apiBlocks=api_blocks,chunkSize=1,resumeCurrent=False,autoSaveCurrent=False,baseDir=None,debugOutput=False)
+		# print (aiFinalResult)
+
+	aiState = initAiState(aiFinalResult) if integrateAI else None
 	for mySyscall in syscallChoices:
-		sysPrototype= (syscall_signature[mySyscall])
-		numSyscallParams=sysPrototype[0]
-		t=numSyscallParams-1
-		generateSyscallParams+="push edi\n"
+		sysPrototype = syscall_signature[mySyscall]
+		numSyscallParams = sysPrototype[0]
+		t = numSyscallParams - 1
+		generateSyscallParams += "push edi\n"
+		aiCallEntry = None
+		if integrateAI:
+			aiCallEntry = getNextAiCallEntry(aiState)
+
 		for each in range(numSyscallParams):
-			temp="push 0x00000000 ; param " + str(t)
-			commentSyscallParams=""
-			if sh.show_comments:
-				commentSyscallParams="; " + cya+ sysPrototype[1][t] + " " + yel+  sysPrototype[2][t] +res
-			generateSyscallParams+="push 0x00000000 \t" +  commentSyscallParams +"\n"
-			t-=1
-		generateSyscallParams+="\n"
+			commentSyscallParams = ""
+			paramType = sysPrototype[1][t]
+			paramName = sysPrototype[2][t]
+
+			# Path 3: OpenAI illustrative mode
+			if integrateAI and aiCallEntry:
+				pushValue, additionalComment, structureRef = getAiPushEntry(aiCallEntry, each)
+				if sh.show_comments:
+					commentSyscallParams = buildSampleValsComment(paramType,paramName,additionalComment)
+				generateSyscallParams += buildAlignedPushLine(pushValue,commentSyscallParams) + "\n"
+				if showStruct and structureRef:
+					generateSyscallParams += buildStructLinesFromAi(structureRef,aiState)
+
+			# Path 2: original offline illustrative mode
+			elif sampleVals and mySyscall in syscallPossibleValues:
+				syscallEntry = syscallPossibleValues[mySyscall]
+				pushList = syscallEntry.get("pushes", [])
+				if each < len(pushList):
+					pushEntry = pushList[each]
+					pushValue = pushEntry.get("value", "0x00000000")
+					additionalComment = pushEntry.get("additionalComment", "")
+					structureRef = pushEntry.get("structureRef")
+				else:
+					pushValue = "0x00000000"
+					additionalComment = ""
+					structureRef = None
+				if sh.show_comments:
+					commentSyscallParams = buildSampleValsComment(paramType,paramName,additionalComment)
+				generateSyscallParams += buildAlignedPushLine(pushValue,commentSyscallParams) + "\n"
+				if showStruct and structureRef:
+					generateSyscallParams += buildStructLines(structureRef,	syscallEntry)
+
+			# Path 1: original no-sample-values mode
+			else:
+				if sh.show_comments:
+					commentSyscallParams = cya + paramType + res + " " + blu + paramName + res
+				generateSyscallParams += buildAlignedPushLine("0x00000000",	commentSyscallParams) + "\n"
+			t -= 1
+
+		generateSyscallParams += "\n"
+
 		syscallComment=""
 		z = dictSyscallEDILocations[mySyscall]
 		if sh.show_comments:
@@ -1997,6 +2348,9 @@ def uiEditSyscalls():
 def uiShowOptionsMainMenu():
 	text="\n"
 	text += "  {}        \n".format(cya + "b"+res+" -"+gre+"  Build syscall shellcode."+ res)
+	text += "  {}        \n".format(cya + "B"+res+" -"+gre+"  Build syscall shellcode (with sample values  ("+yel+"new"+gre+")."+ res)
+	text += "  {}        \n".format(cya + "A"+res+" -"+gre+"  Build syscall shellcode (with sample values using AI ("+yel+"new"+gre+")."+ res)
+
 	text += "  {}        \n".format(cya + "p"+res+" -"+gre+"  Save current syscall shellcode to file."+ res)
 
 	text += "  {}        \n".format(cya + "i"+res+" -"+gre+"  Add or modify syscalls."+ res)
@@ -2095,6 +2449,7 @@ def ui():
 	splash()
 	showOptions()
 	uiShowOptionsMainMenu()
+	global sampleVals,integrateAI
 	x = ""
 
 	while x != "e":		#Loops on keyboard input
@@ -2111,6 +2466,21 @@ def ui():
 			elif userIN[0:1] == "s":
 				uiSyscallStyle()
 			elif userIN[0:1] == "b":
+				integrateAI=False
+				sampleVals=False
+				out=buildSyscall()
+				print(out)
+			elif userIN[0:1] == "B":
+				sampleVals=True
+				integrateAI=False
+				out=buildSyscall()
+				print(out)
+			elif userIN[0:1] == "A":
+				if OPENAI_API_KEY=="putYourKeyHere":
+					print (red,"  You must obtain and enter your"+whi+" OPENAI_API_KEY"+red+" and place it in "+whi+"myKeys.py"+red+".",res)
+					break
+				integrateAI=True
+				sampleVals=False
 				out=buildSyscall()
 				print(out)
 			elif userIN[0:1] == "p":	

@@ -86,6 +86,6 @@ random2="""pop edx
 
 # inv_map = dict(zip(newDict.values(), newDict.keys()))
 
-print (em.winVersion, em.winSP)
-sysCallName = reverseSyscall_dict[em.winVersion][em.winSP]["NtAllocateVirtualMemory"]
-print (sysCallName)
+# print (em.winVersion, em.winSP)
+# sysCallName = reverseSyscall_dict[em.winVersion][em.winSP]["NtAllocateVirtualMemory"]
+# print (sysCallName)
