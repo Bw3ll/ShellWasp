@@ -3,11 +3,11 @@ import os
 import re
 
 NAME = "ShellWasp"
-VERSION = "1.0.1"
+VERSION = "2.1.1"
 REQUIREMENTS = [
     "colorama>=0.4.4",
     "keystone-engine>=0.9.2",
-
+    "openai>=1.0.0",
 ]
 
 setup(
