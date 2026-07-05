@@ -96,6 +96,7 @@ Note: You select the OS builds to target--it is not necessary to target every si
 
 
 ## Updates
+*July 2026 update: ShellWasp 2.1 - added support for missing OS builds - all the most recent Windows 10/11 are covered.
 * March 2026 update: ShellWasp 2.1 has a major usability upgrade to produce clearer and more realistic parameter generation. It can now produce richer illustrative syscall parameters, with optional structure-aware examples and field-level structure expansions where helpful. These are intended as learning aids. I also added chunked processing and automatic aggregation for larger batches of syscalls while preserving call order and supporting repeated uses of the same export in a single run. To make longer sessions easier to manage, ShellWasp now supports a continuously updated working results file, resume capability, and both timestamped JSON snapshots and cleaned-up text exports for review and reuse. More changes are coming.
 * April 19, 2023 - ShellWasp 2.0 is released with masssive changes, including alternative ways to identify to the OSBuild, and three previously undocumented ways to invoke the syscall via WoW64 (one for Windows 7 and two for Windows 10/11).
 * On Nov. 1, 2022, support was added for Windows 10 22H2 and Windows 11 22H2. These are the newest Windows releases. Note: we do not support Insider preview builds nor Server. 
