@@ -571,7 +571,264 @@ def processApiBlocksInChunks(
 
 	return aggregate
 
+def parseHexInt(text, defaultValue=0):
+	if text is None:
+		return defaultValue
+	text = str(text).strip()
+	if not text:
+		return defaultValue
+	try:
+		return int(text, 16)
+	except:
+		return defaultValue
 
+
+def getAiPushEntryDict(aiCallEntry, pushIndex):
+	pushList = aiCallEntry.get("pushes", [])
+	if pushIndex < len(pushList):
+		pushEntry = pushList[pushIndex]
+		if isinstance(pushEntry, dict):
+			return pushEntry
+	return {}
+
+
+def resetAiState(aiState):
+	if isinstance(aiState, dict):
+		aiState["callIndex"] = 0
+
+
+def getAiStructureDef(aiState, structureRef):
+	if not structureRef:
+		return None
+	structMap = aiState.get("structureMap", {})
+	if not isinstance(structMap, dict):
+		return None
+	structDef = structMap.get(structureRef)
+	if isinstance(structDef, dict):
+		return structDef
+	return None
+
+def getTypeDefFromRegistry(typeRegistry, typeName):
+	if typeName in typeRegistry.get("types", {}):
+		return typeRegistry["types"][typeName]
+	if typeName in typeRegistry.get("primitives", {}):
+		return typeRegistry["primitives"][typeName]
+	if typeName in typeRegistry.get("enums", {}):
+		return typeRegistry["enums"][typeName]
+	return None
+
+
+def resolveTypedefFromRegistry(typeRegistry, typeName):
+	seen = set()
+	current = typeName
+
+	while True:
+		if current in seen:
+			return current, getTypeDefFromRegistry(typeRegistry, current)
+
+		seen.add(current)
+		typeDef = getTypeDefFromRegistry(typeRegistry, current)
+		if not typeDef:
+			return current, None
+
+		if typeDef.get("kind") != "typedef":
+			return current, typeDef
+
+		current = typeDef.get("target")
+
+
+def assignNestedValue(targetDict, pathParts, value):
+	cur = targetDict
+	for part in pathParts[:-1]:
+		if part not in cur or not isinstance(cur[part], dict):
+			cur[part] = {}
+		cur = cur[part]
+	cur[pathParts[-1]] = value
+
+
+def convertAiFieldsToStructValueMap(structTypeName, fieldList, typeRegistry):
+	resolvedName, typeDef = resolveTypedefFromRegistry(typeRegistry, structTypeName)
+	if not typeDef:
+		valueMap = {}
+		for field in fieldList:
+			fieldName = str(field.get("fieldName", ""))
+			fieldValue = parseHexInt(field.get("fieldValue", "0x00000000"))
+			if fieldName:
+				assignNestedValue(valueMap, fieldName.split("."), fieldValue)
+		return valueMap
+
+	kind = typeDef.get("kind")
+
+	if kind == "union":
+		unionValue = {}
+		for field in fieldList:
+			fieldName = str(field.get("fieldName", ""))
+			fieldValue = parseHexInt(field.get("fieldValue", "0x00000000"))
+			if not fieldName:
+				continue
+
+			if "." in fieldName:
+				firstPart, rest = fieldName.split(".", 1)
+				unionValue["__member__"] = firstPart
+				if firstPart not in unionValue or not isinstance(unionValue.get(firstPart), dict):
+					unionValue[firstPart] = {}
+				assignNestedValue(unionValue[firstPart], rest.split("."), fieldValue)
+			else:
+				unionValue["__member__"] = fieldName
+				unionValue[fieldName] = fieldValue
+
+		return unionValue
+
+	valueMap = {}
+	for field in fieldList:
+		fieldName = str(field.get("fieldName", ""))
+		fieldValue = parseHexInt(field.get("fieldValue", "0x00000000"))
+		if not fieldName:
+			continue
+		assignNestedValue(valueMap, fieldName.split("."), fieldValue)
+
+	return valueMap
+
+def applyAiPushToPointerOld(pointerEntry, pushEntry, aiState, typeRegistry):
+	if not pointerEntry or not isinstance(pushEntry, dict):
+		return
+
+	structureRef = pushEntry.get("structureRef")
+	pointedValue = pushEntry.get("pointedValue")
+
+	if structureRef:
+		pointerEntry.value = buildAiStructureValue(structureRef, aiState, typeRegistry)
+	elif pointedValue is not None:
+		pointerEntry.value = parseHexInt(pointedValue, 0)
+	else:
+		pointerEntry.value = 0
+
+
+
+def illustrativePushIsNull(pushEntry):
+	if not isinstance(pushEntry, dict):
+		return True
+
+	pushValue = parseHexInt(pushEntry.get("value", "0x00000000"), 0)
+	pointedValue = pushEntry.get("pointedValue")
+	structureRef = pushEntry.get("structureRef")
+
+	return pushValue == 0 and pointedValue is None and not structureRef
+
+	
+def applyAiPushToPointer(pointerEntry, pushEntry, aiState, typeRegistry):
+	structureMap = aiState.get("structureMap", {})
+	applyIllustrativePushToPointer(pointerEntry, pushEntry, structureMap, typeRegistry)
+
+def applyIllustrativePushToPointer(pointerEntry, pushEntry, structureMap, typeRegistry):
+	if not pointerEntry:
+		return
+
+	pointerEntry.skipBuild = illustrativePushIsNull(pushEntry)
+
+	if pointerEntry.skipBuild:
+		pointerEntry.value = 0
+		return
+
+	structureRef = pushEntry.get("structureRef")
+	pointedValue = pushEntry.get("pointedValue")
+
+	if structureRef:
+		pointerEntry.value = buildStructureValueFromMap(structureRef, structureMap, typeRegistry)
+	elif pointedValue is not None:
+		pointerEntry.value = parseHexInt(pointedValue, 0)
+	else:
+		pointerEntry.value = 0
+
+
+##
+
+def buildStructureValueFromMap(structureRef, structureMap, typeRegistry):
+	if not structureRef or not isinstance(structureMap, dict):
+		return 0
+
+	structDef = structureMap.get(structureRef)
+	if not isinstance(structDef, dict):
+		return 0
+
+	structType = structDef.get("type", "")
+	fieldList = structDef.get("fields", [])
+
+	if not isinstance(fieldList, list):
+		fieldList = []
+
+	return convertAiFieldsToStructValueMap(structType, fieldList, typeRegistry)
+
+
+def buildAiStructureMap(aiFinalResult):
+	structureMap = {}
+	if not aiFinalResult:
+		return structureMap
+
+	structures = aiFinalResult.get("structures", {})
+	if not isinstance(structures, dict):
+		return structureMap
+
+	for structId, structDef in structures.items():
+		if isinstance(structDef, dict):
+			structureMap[structId] = structDef
+
+	return structureMap
+def initAiState(aiFinalResult):
+	if not aiFinalResult:
+		return {
+			"calls": [],
+			"callIndex": 0,
+			"structureMap": {}
+		}
+
+	return {
+		"calls": aiFinalResult.get("calls", []),
+		"callIndex": 0,
+		"structureMap": buildAiStructureMap(aiFinalResult)
+	}
+
+
+def getNextAiCallEntry(aiState):
+	callIndex = aiState["callIndex"]
+	callList = aiState["calls"]
+
+	if callIndex >= len(callList):
+		return None
+
+	callEntry = callList[callIndex]
+	aiState["callIndex"] += 1
+	return callEntry
+
+
+def getAiPushEntry(aiCallEntry, pushIndex):
+	pushList = aiCallEntry.get("pushes", [])
+
+	if pushIndex < len(pushList):
+		pushEntry = pushList[pushIndex]
+		pushValue = pushEntry.get("value", "0x00000000")
+		additionalComment = pushEntry.get("additionalComment", "")
+		structureRef = pushEntry.get("structureRef")
+	else:
+		pushValue = "0x00000000"
+		additionalComment = ""
+		structureRef = None
+
+	return pushValue, additionalComment, structureRef
+
+
+
+def buildAiStructureValue(structureRef, aiState, typeRegistry):
+	structDef = getAiStructureDef(aiState, structureRef)
+	if not structDef:
+		return 0
+
+	structType = structDef.get("type", "")
+	fieldList = structDef.get("fields", [])
+	if not isinstance(fieldList, list):
+		fieldList = []
+
+	return convertAiFieldsToStructValueMap(structType, fieldList, typeRegistry)
 def buildPossibleValues(
 	apiBlocks: list[str],
 	chunkSize: int = 1,

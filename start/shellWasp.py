@@ -15,6 +15,7 @@ import datetime
 from .syscallPossibleValues import syscallPossibleValues
 from .syscallAIHelper import *
 from .syscallAiPrompts import *
+from .natives import *
 
 colorama.init()
 
@@ -488,6 +489,83 @@ def isWin1011():
 	else:
 		return False
 
+def applyAiCallEntryToPointers(syscallSeqNum, mySyscall, sysPrototype, aiCallEntry, aiState, ourPointers, typeRegistry):
+	numSyscallParams = sysPrototype[0]
+	t = numSyscallParams - 1
+
+	for each in range(numSyscallParams):
+		pushEntry = getAiPushEntryDict(aiCallEntry, each)
+		rootPointer = PointerInfo.getRootPointerForParam(syscallSeqNum, mySyscall, t)
+
+		if rootPointer:
+			applyAiPushToPointer(rootPointer, pushEntry, aiState, typeRegistry)
+
+		t -= 1
+
+def buildStructLinesFromAi(structureRef, aiState, commentColumn=24, showFieldType=True):
+	if not structureRef:
+		return ""
+
+	structMap = aiState.get("structureMap", {})
+	if not isinstance(structMap, dict):
+		return ""
+
+	structDef = structMap.get(structureRef)
+	if not isinstance(structDef, dict):
+		return ""
+
+	fields = structDef.get("fields", [])
+	if not isinstance(fields, list) or not fields:
+		return ""
+
+	lines = []
+	semicolonPrefix = " " * (5 + commentColumn) + "; "
+	start0 = whi + "Struct:" + res
+	start = semicolonPrefix+start0
+	lines.append(start)
+
+	for field in fields:
+		fieldName = str(field.get("fieldName", "UNKNOWN"))
+		fieldType = str(field.get("fieldType", "UNKNOWN"))
+		fieldValue = str(field.get("fieldValue", "UNKNOWN"))
+		fieldComment = field.get("fieldComment")
+
+		if showFieldType:
+			line = (
+				semicolonPrefix
+				+ mag + fieldType + res
+				+ " "
+				+ blu + fieldName + res
+				+ " = "
+				+ yel + fieldValue + res
+			)
+		else:
+			line = semicolonPrefix + mag + fieldName + res + " = " + yel + fieldValue + res
+
+		if fieldComment:
+			line += " " + yel + "(" + str(fieldComment) + ")" + res
+
+		lines.append(line)
+
+	return "\n".join(lines) + "\n"
+def prepareAiPointers(syscallChoices, syscall_signature, aiState, ourPointers, typeRegistry):
+	resetAiState(aiState)
+
+	for syscallSeqNum, mySyscall in enumerate(syscallChoices):
+		sysPrototype = syscall_signature[mySyscall]
+		aiCallEntry = getNextAiCallEntry(aiState)
+
+		if not aiCallEntry:
+			continue
+
+		expectedName = aiCallEntry.get("ntFunc")
+		if expectedName != mySyscall:
+			print(f"AI call mismatch: expected {mySyscall}, got {expectedName}")
+
+		applyAiCallEntryToPointers(syscallSeqNum=syscallSeqNum,mySyscall=mySyscall,sysPrototype=sysPrototype,aiCallEntry=aiCallEntry,aiState=aiState,ourPointers=ourPointers,typeRegistry=typeRegistry)
+
+	resetAiState(aiState)
+
 def buildAiPromptSectionForSyscall(mySyscall, syscall_signature, syscallHeaderSuffixes=None):
 	"""
 	Build one AI prompt section like:
@@ -568,111 +646,7 @@ def stripLeadingTextCaseInsensitive(text, prefix):
 
 	return text.lstrip(" :-\t")
 
-def buildAiStructureMap(aiFinalResult):
-	structureMap = {}
-	if not aiFinalResult:
-		return structureMap
 
-	# structures = aiFinalResult.get("structures", {})
-	# if not isinstance(structures, dict):
-	# 	return structureMap
-
-	for structId, structDef in aiFinalResult.get("structures", {}).items():
-		if isinstance(structDef, dict):
-			structureMap[structId] = structDef
-
-	return structureMap
-
-
-def initAiState(aiFinalResult):
-	if not aiFinalResult:
-		return {
-			"calls": [],
-			"callIndex": 0,
-			"structureMap": {}
-		}
-
-	return {
-		"calls": aiFinalResult.get("calls", []),
-		"callIndex": 0,
-		"structureMap": buildAiStructureMap(aiFinalResult)
-	}
-
-
-def getNextAiCallEntry(aiState):
-	callIndex = aiState["callIndex"]
-	callList = aiState["calls"]
-
-	if callIndex >= len(callList):
-		return None
-
-	callEntry = callList[callIndex]
-	aiState["callIndex"] += 1
-	return callEntry
-
-
-def getAiPushEntry(aiCallEntry, pushIndex):
-	pushList = aiCallEntry.get("pushes", [])
-
-	if pushIndex < len(pushList):
-		pushEntry = pushList[pushIndex]
-		pushValue = pushEntry.get("value", "0x00000000")
-		additionalComment = pushEntry.get("additionalComment", "")
-		structureRef = pushEntry.get("structureRef")
-	else:
-		pushValue = "0x00000000"
-		additionalComment = ""
-		structureRef = None
-
-	return pushValue, additionalComment, structureRef
-
-
-def buildStructLinesFromAi(structureRef, aiState, commentColumn=24, showFieldType=True):
-	if not structureRef:
-		return ""
-
-	structMap = aiState.get("structureMap", {})
-	if not isinstance(structMap, dict):
-		return ""
-
-	structDef = structMap.get(structureRef)
-	if not isinstance(structDef, dict):
-		return ""
-
-	fields = structDef.get("fields", [])
-	if not isinstance(fields, list) or not fields:
-		return ""
-
-	lines = []
-	semicolonPrefix = " " * (5 + commentColumn) + "; "
-	start0 = whi + "Struct:" + res
-	start = semicolonPrefix+start0
-	lines.append(start)
-
-	for field in fields:
-		fieldName = str(field.get("fieldName", "UNKNOWN"))
-		fieldType = str(field.get("fieldType", "UNKNOWN"))
-		fieldValue = str(field.get("fieldValue", "UNKNOWN"))
-		fieldComment = field.get("fieldComment")
-
-		if showFieldType:
-			line = (
-				semicolonPrefix
-				+ mag + fieldType + res
-				+ " "
-				+ blu + fieldName + res
-				+ " = "
-				+ yel + fieldValue + res
-			)
-		else:
-			line = semicolonPrefix + mag + fieldName + res + " = " + yel + fieldValue + res
-
-		if fieldComment:
-			line += " " + yel + "(" + str(fieldComment) + ")" + res
-
-		lines.append(line)
-
-	return "\n".join(lines) + "\n"
 
 def sanitizeAdditionalComment(paramType, paramName, additionalComment):
 	if additionalComment is None:
@@ -714,14 +688,7 @@ def sanitizeAdditionalComment(paramType, paramName, additionalComment):
 
 	return text
 
-def buildAlignedPushLine(pushValue, commentText, commentColumn=24):
-	line = "push " + pushValue
 
-	if commentText:
-		padding = max(1, commentColumn - len(pushValue))
-		line += (" " * padding) + "; " + commentText
-
-	return line
 
 
 def buildStructLines(structureRef, syscallEntry, commentColumn=24):
@@ -766,6 +733,134 @@ def buildSampleValsComment(paramType, paramName, additionalComment):
 
 	return baseComment
 
+def looksLikePointerType(paramType):
+    paramType = str(paramType).strip()
+    return paramType.startswith("P") or "*" in paramType
+
+
+def printAllPointerParams(syscallChoices, syscall_signature):
+    for item in syscallChoices:
+        if item not in syscall_signature:
+            print(f"{item}: <missing from syscall_signature>")
+            continue
+
+        prototype = syscall_signature[item]
+        typeList = prototype[1]
+        nameList = prototype[2]
+
+        foundAny = False
+
+        for idx, (paramType, paramName) in enumerate(zip(typeList, nameList)):
+            if looksLikePointerType(paramType):
+                if not foundAny:
+                    print(f"{item}:")
+                    foundAny = True
+
+                print(f"    param {idx}: {paramType} {paramName}")
+
+        if foundAny:
+            print()
+def getParamAnnotation(sysPrototype, paramNum):
+	if len(sysPrototype) > 3 and isinstance(sysPrototype[3], (list, tuple)) and paramNum < len(sysPrototype[3]):
+		return str(sysPrototype[3][paramNum])
+	return ""
+
+
+def paramIsInOpt(sysPrototype, paramNum, paramType="", paramName=""):
+	checkText = (getParamAnnotation(sysPrototype, paramNum) + " " + str(paramType) + " " + str(paramName)).lower()
+	return "__in_opt" in checkText or "in_opt" in checkText
+
+
+def buildNullParamComment(paramType, paramName):
+	return cya + paramType + res + " " + blu + paramName + res + " " + red + "(NULL in_opt)" + res
+
+
+def getNullLookupFieldFlag(structTypeName, fieldPath, nullLookup=None):
+	if nullLookup is None:
+		nullLookup = NT_NULL_LOOKUP
+
+	cur = nullLookup.get(structTypeName)
+	if not isinstance(cur, dict):
+		return False
+
+	for piece in str(fieldPath).split("."):
+		if not isinstance(cur, dict) or piece not in cur:
+			return False
+		cur = cur[piece]
+
+	return cur is True
+
+
+def formatPointerPushValue(memLoc):
+	memLoc = str(memLoc).strip()
+	if memLoc.startswith("["):
+		return "dword ptr " + memLoc
+	return "dword ptr [" + memLoc + "]"
+
+
+def buildExistingPointerComment(paramType, paramName, pointerEntry):
+	return cya + paramType + res + " " + blu + paramName + res + " " + gre + "(built ptr)" + res
+
+
+def buildAlignedPushLine(pushValue, commentText, commentColumn=24):
+	line = "push " + pushValue
+
+	if commentText:
+		padding = max(1, commentColumn - len(pushValue))
+		line += (" " * padding) + "; " + commentText
+
+	return line
+
+def getOfflinePushEntry(syscallEntry, pushIndex):
+	pushList = syscallEntry.get("pushes", [])
+	if pushIndex < len(pushList) and isinstance(pushList[pushIndex], dict):
+		return pushList[pushIndex]
+	return {}
+
+
+def getOfflineStructureMap(syscallEntry):
+	structures = syscallEntry.get("structures", syscallEntry.get("structureMap", {}))
+
+	if isinstance(structures, dict):
+		return structures
+
+	structureMap = {}
+
+	if isinstance(structures, list):
+		for structDef in structures:
+			if not isinstance(structDef, dict):
+				continue
+
+			structId = structDef.get("id")
+			if structId:
+				structureMap[structId] = structDef
+
+	return structureMap
+
+def applyOfflineCallEntryToPointers(syscallSeqNum, mySyscall, sysPrototype, syscallEntry, typeRegistry):
+	numSyscallParams = sysPrototype[0]
+	structureMap = getOfflineStructureMap(syscallEntry)
+	t = numSyscallParams - 1
+
+	for each in range(numSyscallParams):
+		pushEntry = getOfflinePushEntry(syscallEntry, each)
+		rootPointer = PointerInfo.getRootPointerForParam(syscallSeqNum, mySyscall, t)
+
+		if rootPointer:
+			applyIllustrativePushToPointer(rootPointer, pushEntry, structureMap, typeRegistry)
+
+		t -= 1
+
+
+def prepareOfflinePointers(syscallChoices, syscall_signature, syscallPossibleValues, typeRegistry):
+	for syscallSeqNum, mySyscall in enumerate(syscallChoices):
+		syscallEntry = syscallPossibleValues.get(mySyscall)
+
+		if not isinstance(syscallEntry, dict):
+			continue
+
+		sysPrototype = syscall_signature[mySyscall]
+		applyOfflineCallEntryToPointers(syscallSeqNum, mySyscall, sysPrototype, syscallEntry, typeRegistry)
 def buildSyscall(print_to_file=False):
 
 	# osChoices = ["4A62","3AD7", "47BA","1DB0", "55F0", "4A64"]
@@ -1299,10 +1394,11 @@ nop
 		winVersion=builds.winOSReverseLookup[osChoice]
 
 		hexOsChoice=builds.osChoiceToHex[osChoice]		
-		sizeOsBuild=len(hexOsChoice)
-		osBStart=sizeOsBuild-2
-		osBuild=hexOsChoice[osBStart:]
+		# sizeOsBuild=len(hexOsChoice)
+		# osBStart=sizeOsBuild-2
+		# osBuild=hexOsChoice[osBStart:]
 		# print ("osBuild", osBuild)
+		osBuild=hexOsChoice
 
 		winReleaseText=""
 
@@ -1316,15 +1412,16 @@ nop
 			elif winVersion=="Windows 11":
 				winReleaseText="; "+mag+builds.win11ReverseLookup[str(int(osChoice,16))] +" release"+res
 			
-		generateInitializer+="cmp bl, 0x"+osBuild+"\t\t" + winReleaseText + "\n"
+		generateInitializer+="cmp bx, 0x"+osBuild+"\t\t" + winReleaseText + "\n"
 		if t ==(numChoices):
-			generateInitializer+="jl end"  +"\n"
+			generateInitializer+="jb end"  +"\n"
 		else:
-			generateInitializer+="jl less" +str(t) +"\n"
+			generateInitializer+="jb less" +str(t) +"\n"
 
 
 
-		for mySyscall in syscallChoices:
+		# for mySyscall in syscallChoices:
+		for syscallSeqNum, mySyscall in enumerate(syscallChoices):
 			# winVersion=winOSReverseLookupHex[osChoice]
 			if mySyscall not in listOfSyscallsAdded:
 				listOfSyscallsAdded.append(mySyscall)
@@ -1377,16 +1474,74 @@ nop
 	# 	generateSyscallParams+="\n"
 
 
+	# if integrateAI:
+	# 	FUNCS_PER_BLOCK = 5
+	# 	syscallHeaderSuffixes = {"NtProtectVirtualMemory": "with RWX"}
+
+	# 	api_blocks = buildApiBlocksFromSyscalls(syscallChoices=syscallChoices, syscall_signature=syscall_signature, funcsPerBlock=FUNCS_PER_BLOCK,syscallHeaderSuffixes=syscallHeaderSuffixes)
+	# 	print ("api_blocks",api_blocks)
+	# 	aiFinalResult = buildPossibleValues(apiBlocks=api_blocks,chunkSize=1,resumeCurrent=False,autoSaveCurrent=False,baseDir=None,debugOutput=False)
+	# 	print ("aiFinalResult", aiFinalResult)
+	# input()
+	# aiState = initAiState(aiFinalResult) if integrateAI else None
+	
+	
+	# printAllPointerParams(syscallChoices, syscall_signature)
+	# ourPointers = PointerInfo.buildFromSyscalls(syscallChoices, syscall_signature,NT_NATIVE_TYPES)
+	# PointerInfo.printPointers()
+	# print (len(ourPointers))
+
+
+	# ourPointers = PointerInfo.buildFromSyscalls(syscallChoices, syscall_signature, NT_NATIVE_TYPES)
+	# PointerInfo.printPointers()
+
+	# childLookup = PointerInfo.buildChildLookup()
+	# # print(childLookup)
+
+
+
+	# asmText = generatePointerBuildAssembly(syscallChoices, ourPointers, NT_NATIVE_TYPES, arch="x86")
+	# print(asmText)
+
 	if integrateAI:
 		FUNCS_PER_BLOCK = 5
 		syscallHeaderSuffixes = {"NtProtectVirtualMemory": "with RWX"}
 
-		api_blocks = buildApiBlocksFromSyscalls(syscallChoices=syscallChoices, syscall_signature=syscall_signature, funcsPerBlock=FUNCS_PER_BLOCK,syscallHeaderSuffixes=syscallHeaderSuffixes)
-		aiFinalResult = buildPossibleValues(apiBlocks=api_blocks,chunkSize=1,resumeCurrent=False,autoSaveCurrent=False,baseDir=None,debugOutput=False)
-		# print (aiFinalResult)
+		api_blocks = buildApiBlocksFromSyscalls(syscallChoices=syscallChoices,syscall_signature=syscall_signature,funcsPerBlock=FUNCS_PER_BLOCK, syscallHeaderSuffixes=syscallHeaderSuffixes)
+
+		aiFinalResult = buildPossibleValues(apiBlocks=api_blocks, chunkSize=1,resumeCurrent=False,autoSaveCurrent=False,baseDir=None,debugOutput=False)
 
 	aiState = initAiState(aiFinalResult) if integrateAI else None
-	for mySyscall in syscallChoices:
+
+	# ourPointers = PointerInfo.buildFromSyscalls(syscallChoices, syscall_signature, NT_NATIVE_TYPES)
+
+	# if integrateAI and aiState:
+	# 	prepareAiPointers(syscallChoices=syscallChoices,syscall_signature=syscall_signature,aiState=aiState,ourPointers=ourPointers,typeRegistry=NT_NATIVE_TYPES)
+
+	# # PointerInfo.printPointers()
+
+	# childLookup = PointerInfo.buildChildLookup()
+
+	# asmText = generatePointerBuildAssembly(syscallChoices, ourPointers, NT_NATIVE_TYPES, arch="x86")
+	ourPointers = PointerInfo.buildFromSyscalls(syscallChoices, syscall_signature, NT_NATIVE_TYPES)
+
+	if integrateAI and aiState:
+		prepareAiPointers(syscallChoices=syscallChoices, syscall_signature=syscall_signature, aiState=aiState, ourPointers=ourPointers, typeRegistry=NT_NATIVE_TYPES)
+	elif sampleVals:
+		prepareOfflinePointers(syscallChoices, syscall_signature, syscallPossibleValues, NT_NATIVE_TYPES)
+
+	childLookup = PointerInfo.buildChildLookup()
+	asmText = generatePointerBuildAssembly(syscallChoices, ourPointers, NT_NATIVE_TYPES, arch="x86")
+	# print(asmText)
+
+	# input()
+
+	path1 = False
+	path2 = False
+	path3 = False
+	
+	# for mySyscall in syscallChoices:
+	for syscallSeqNum, mySyscall in enumerate(syscallChoices):
 		sysPrototype = syscall_signature[mySyscall]
 		numSyscallParams = sysPrototype[0]
 		t = numSyscallParams - 1
@@ -1395,45 +1550,116 @@ nop
 		if integrateAI:
 			aiCallEntry = getNextAiCallEntry(aiState)
 
+		# print (sysPrototype)
 		for each in range(numSyscallParams):
 			commentSyscallParams = ""
 			paramType = sysPrototype[1][t]
 			paramName = sysPrototype[2][t]
 
 			# Path 3: OpenAI illustrative mode
+			# if integrateAI and aiCallEntry:
+			# 	pushValue, additionalComment, structureRef = getAiPushEntry(aiCallEntry, each)
+			# 	if sh.show_comments:
+			# 		commentSyscallParams = buildSampleValsComment(paramType,paramName,additionalComment)
+			# 	generateSyscallParams += buildAlignedPushLine(pushValue,commentSyscallParams) + "\n"
+			# 	if showStruct and structureRef:
+			# 		generateSyscallParams += buildStructLinesFromAi(structureRef,aiState)
+			# Path 3: OpenAI illustrative mode
 			if integrateAI and aiCallEntry:
-				pushValue, additionalComment, structureRef = getAiPushEntry(aiCallEntry, each)
-				if sh.show_comments:
-					commentSyscallParams = buildSampleValsComment(paramType,paramName,additionalComment)
-				generateSyscallParams += buildAlignedPushLine(pushValue,commentSyscallParams) + "\n"
-				if showStruct and structureRef:
-					generateSyscallParams += buildStructLinesFromAi(structureRef,aiState)
-
-			# Path 2: original offline illustrative mode
-			elif sampleVals and mySyscall in syscallPossibleValues:
-				syscallEntry = syscallPossibleValues[mySyscall]
-				pushList = syscallEntry.get("pushes", [])
-				if each < len(pushList):
-					pushEntry = pushList[each]
-					pushValue = pushEntry.get("value", "0x00000000")
-					additionalComment = pushEntry.get("additionalComment", "")
-					structureRef = pushEntry.get("structureRef")
+				path3=True
+				pushEntry = getAiPushEntryDict(aiCallEntry, each)
+				pushValue = str(pushEntry.get("value", "0x00000000"))
+				additionalComment = pushEntry.get("additionalComment", "")
+				structureRef = pushEntry.get("structureRef")
+				existingPointer = PointerInfo.getRootPointerForParam(syscallSeqNum, mySyscall, t)
+				if existingPointer:
+					pushValue = formatPointerPushValue(existingPointer.memLoc)
+					if sh.show_comments:
+						commentSyscallParams = buildExistingPointerComment(paramType, paramName, existingPointer)
+						if additionalComment:
+							commentSyscallParams += " " + yel + "(" + str(additionalComment) + ")" + res
 				else:
-					pushValue = "0x00000000"
-					additionalComment = ""
-					structureRef = None
-				if sh.show_comments:
-					commentSyscallParams = buildSampleValsComment(paramType,paramName,additionalComment)
-				generateSyscallParams += buildAlignedPushLine(pushValue,commentSyscallParams) + "\n"
+					if sh.show_comments:
+						commentSyscallParams = buildSampleValsComment(paramType, paramName, additionalComment)
+				generateSyscallParams += buildAlignedPushLine(pushValue, commentSyscallParams) + "\n"
 				if showStruct and structureRef:
-					generateSyscallParams += buildStructLines(structureRef,	syscallEntry)
+					generateSyscallParams += buildStructLinesFromAi(structureRef, aiState)
+			# Path 2: original offline illustrative mode
+			# elif sampleVals and mySyscall in syscallPossibleValues:
+			# 	syscallEntry = syscallPossibleValues[mySyscall]
+			# 	pushList = syscallEntry.get("pushes", [])
+			# 	if each < len(pushList):
+			# 		pushEntry = pushList[each]
+			# 		pushValue = pushEntry.get("value", "0x00000000")
+			# 		additionalComment = pushEntry.get("additionalComment", "")
+			# 		structureRef = pushEntry.get("structureRef")
+			# 	else:
+			# 		pushValue = "0x00000000"
+			# 		additionalComment = ""
+			# 		structureRef = None
+			# 	if sh.show_comments:
+			# 		commentSyscallParams = buildSampleValsComment(paramType,paramName,additionalComment)
+			# 	generateSyscallParams += buildAlignedPushLine(pushValue,commentSyscallParams) + "\n"
+			# 	if showStruct and structureRef:
+			# 		generateSyscallParams += buildStructLines(structureRef,	syscallEntry)
+# Path 2: offline illustrative mode
+			elif sampleVals and mySyscall in syscallPossibleValues:
+				path2 = True
+				syscallEntry = syscallPossibleValues[mySyscall]
+				pushEntry = getOfflinePushEntry(syscallEntry, each)
+				pushValue = str(pushEntry.get("value", "0x00000000"))
+				additionalComment = pushEntry.get("additionalComment", "")
+				structureRef = pushEntry.get("structureRef")
+				existingPointer = PointerInfo.getRootPointerForParam(syscallSeqNum, mySyscall, t)
+				explicitNull = illustrativePushIsNull(pushEntry)
+
+				if existingPointer and not explicitNull:
+					pushValue = formatPointerPushValue(existingPointer.memLoc)
+
+					if sh.show_comments:
+						commentSyscallParams = buildExistingPointerComment(paramType, paramName, existingPointer)
+
+						if additionalComment:
+							commentSyscallParams += " " + yel + "(" + str(additionalComment) + ")" + res
+				else:
+					if sh.show_comments:
+						commentSyscallParams = buildSampleValsComment(paramType, paramName, additionalComment)
+
+				generateSyscallParams += buildAlignedPushLine(pushValue, commentSyscallParams) + "\n"
+
+				if showStruct and structureRef:
+					generateSyscallParams += buildStructLines(structureRef, syscallEntry)
+			# Path 1: original no-sample-values mode
+			# else:
+			# 	if sh.show_comments:
+			# 		commentSyscallParams = cya + paramType + res + " " + blu + paramName + res
+			# 	generateSyscallParams += buildAlignedPushLine("0x00000000",	commentSyscallParams) + "\n"
 
 			# Path 1: original no-sample-values mode
 			else:
-				if sh.show_comments:
-					commentSyscallParams = cya + paramType + res + " " + blu + paramName + res
-				generateSyscallParams += buildAlignedPushLine("0x00000000",	commentSyscallParams) + "\n"
+				path1 = True
+				existingPointer = PointerInfo.getRootPointerForParam(syscallSeqNum, mySyscall, t)
+				forceNull = paramIsInOpt(sysPrototype, t, paramType, paramName)
+
+				if forceNull:
+					pushValue = "0x00000000"
+					if sh.show_comments:
+						commentSyscallParams = buildNullParamComment(paramType, paramName)
+
+				elif existingPointer:
+					pushValue = formatPointerPushValue(existingPointer.memLoc)
+					if sh.show_comments:
+						commentSyscallParams = buildExistingPointerComment(paramType, paramName, existingPointer)
+
+				else:
+					pushValue = "0x00000000"
+					if sh.show_comments:
+						commentSyscallParams = cya + paramType + res + " " + blu + paramName + res
+
+				generateSyscallParams += buildAlignedPushLine(pushValue, commentSyscallParams) + "\n"
+
 			t -= 1
+
 
 		generateSyscallParams += "\n"
 
@@ -1467,6 +1693,25 @@ nop
 	
 	finalSyscallShellcode= initializerStart+generateInitializer+endInitializer+generateSyscallParams+ endShellcode0+ ourSyscall + endShellcode1
 	
+	# if path1 or path3:
+	# 	note=whi+";"+gre+" Note: "+cya+"All parameter values in this mode are instantiated as zero, left to users to populate.\n"+whi+";"+cya+" For illustrative sample values, use one of the AI options.\n\n"+res2
+	# 	if path1:
+	# 		initializerStart=note+initializerStart
+	# 	finalSyscallShellcode= initializerStart+generateInitializer+endInitializer+asmText+generateSyscallParams+ endShellcode0+ ourSyscall + endShellcode1
+	if path1 or path2 or path3:
+		note = whi+";"+gre+" Note: "+cya+"All parameter values in this mode are instantiated as zero, left to users to populate.\n"+whi+";"+cya+" For illustrative sample values, use one of the AI options.\n\n"+res2
+
+		if path1:
+			initializerStart = note + initializerStart
+
+		finalSyscallShellcode = initializerStart+generateInitializer+endInitializer+asmText+generateSyscallParams+endShellcode0+ourSyscall+endShellcode1
+		
+
+	# print (syscallChoices)
+	# input()
+	# print (endInitializer)
+	# print ("special outs")
+	# input()
 	out= finalSyscallShellcode
 	
 	
@@ -1477,6 +1722,8 @@ nop
 	finalSyscallShellcode = finalSyscallShellcode.replace(blu,'')
 	finalSyscallShellcode = finalSyscallShellcode.replace(res,'')
 	finalSyscallShellcode = finalSyscallShellcode.replace(cya,'')
+	finalSyscallShellcode = finalSyscallShellcode.replace(red,'')
+
 	finalSyscallShellcodeText=finalSyscallShellcode
 	# finalSyscallShellcode = finalSyscallShellcode.replace(';','#')
 	out2= finalSyscallShellcode
@@ -1488,7 +1735,7 @@ nop
 	
 
 	if print_to_file:
-		time = datetime.datetime.now()
+		time = datetime.now()
 		filetime = time.strftime("%Y%m%d_%H%M%S")
 		
 		win="Win"
@@ -1504,8 +1751,7 @@ nop
 				sys+=each+"_"
 			t+=1
 
-		outputFileName=win+"_"+sys+filetime+".txt"
-		
+		outputFileName=win+"_"+sys[:20]+"_"+filetime+".txt"
 		output_dir = os.getcwd()
 
 		myOutDir = "current_dir" #todo
@@ -1513,22 +1759,19 @@ nop
 			output_dir = os.path.join(os.path.dirname(__file__), "Syscall Output")
 		else:
 			output_dir = myOutDir #todo
-
 		txtFileName =  os.path.join(output_dir, outputFileName)
 		os.makedirs(os.path.dirname(txtFileName), exist_ok=True)
 		text = open(txtFileName, "w")
 		text.write (out2)
 		# text.write(emulation_txt)
 		text.close()
-
-		print(red+" Saved file to: "+res, txtFileName)
-		
+		printMsg=red+" Saved file to: \n "+res+" "+txtFileName
 	# if sh.printStringLiteral:
 	# 	print(sRaw.bytesShellcode)
 
 	# 	print(sRaw.shellCodeStrLit)
 
-	return out
+	return out,printMsg
 
 SYSCALL_BOOL_DICT = {
 "l": False,
@@ -2523,23 +2766,26 @@ def ui():
 			elif userIN[0:1] == "b":
 				integrateAI=False
 				sampleVals=False
-				out=buildSyscall()
+				out, printMsg=buildSyscall(True)
 				print(out)
+				print (printMsg)
 			elif userIN[0:1] == "B":
 				sampleVals=True
 				integrateAI=False
-				out=buildSyscall()
+				out, printMsg=buildSyscall(True)
 				print(out)
+				print (printMsg)
 			elif userIN[0:1] == "A":
 				if OPENAI_API_KEY=="putYourKeyHere":
 					print (red,"  You must obtain and enter your"+whi+" OPENAI_API_KEY"+red+" and place it in "+whi+"myKeys.py"+red+".",res)
 					break
 				integrateAI=True
 				sampleVals=False
-				out=buildSyscall()
+				out, printMsg=buildSyscall(True)
 				print(out)
+				print (printMsg)
 			elif userIN[0:1] == "p":	
-				buildSyscall(True)
+				out, printMsg = buildSyscall(True)
 			elif userIN[0:1] == "w":
 				giveInputWinReleases()
 			elif(re.match("^b$", userIN)):
